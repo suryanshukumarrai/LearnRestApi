@@ -24,7 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 public class StudentService {
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
-    private static final Set<String> ALLOWED_PATCH_FIELDS = Set.of("name", "email");
+    private static final Set<String> ALLOWED_PATCH_FIELDS = Set.of("name", "email", "courses");
+    private static final Set<String> PREDEFINED_COURSES = Set.of("English", "Math", "Science", "History", "Biology", "Chemistry", "Physics", "Geography", "Computer Science", "Sports");
 
     private final StudentRepositery studentRepositery;
     private final ModelMapper modelMapper;
@@ -47,6 +48,9 @@ public class StudentService {
 
     public StudentDTO createNewStudent(AddStudentRequestDTO dto){
         log.debug("Creating student with email: {}", dto.getEmail());
+        if (dto.getCourses() != null && !dto.getCourses().isBlank()) {
+            validateCourses(dto.getCourses());
+        }
         Student student = modelMapper.map(dto, Student.class);
         Student saved = studentRepositery.save(student);
         return modelMapper.map(saved, StudentDTO.class);
@@ -67,6 +71,10 @@ public class StudentService {
 
         student.setName(dto.getName());
         student.setEmail(dto.getEmail());
+        if (dto.getCourses() != null && !dto.getCourses().isBlank()) {
+            validateCourses(dto.getCourses());
+            student.setCourses(dto.getCourses());
+        }
 
         Student updated = studentRepositery.save(student);
         return modelMapper.map(updated, StudentDTO.class);
@@ -103,7 +111,29 @@ public class StudentService {
             student.setEmail(email);
         }
 
+        if(updates.containsKey("courses")){
+            Object coursesObj = updates.get("courses");
+            if (!(coursesObj instanceof String courses) || courses.isBlank() || courses.length() > 500) {
+                throw new IllegalArgumentException("courses should not be blank and not exceed 500 characters");
+            }
+            validateCourses(courses);
+            student.setCourses(courses);
+        }
+
         Student updated = studentRepositery.save(student);
         return modelMapper.map(updated, StudentDTO.class);
+    }
+
+    private void validateCourses(String courses) {
+        if (courses == null || courses.isBlank()) {
+            return;
+        }
+        String[] courseArray = courses.split(",");
+        for (String course : courseArray) {
+            String trimmedCourse = course.trim();
+            if (!PREDEFINED_COURSES.contains(trimmedCourse)) {
+                throw new IllegalArgumentException("Invalid course: " + trimmedCourse + ". Allowed courses: " + PREDEFINED_COURSES);
+            }
+        }
     }
 }

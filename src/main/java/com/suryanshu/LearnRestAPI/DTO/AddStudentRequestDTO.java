@@ -13,4 +13,6 @@ public class AddStudentRequestDTO {
     @Email
     @NotBlank(message = "put your email here and it should be vailid")
     private String email;
+    @Size(max = 500, message = "courses should not exceed 500 characters. Use format: English,Math,Science")
+    private String courses;
 }
